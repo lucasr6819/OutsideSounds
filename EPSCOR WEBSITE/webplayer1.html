@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Player</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .audio-container {
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        audio {
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="audio-container">
+        <h2>Audio Player</h2>
+        <audio controls>
+            <source src="inbetween.m4a" type="audio/mp4">
+            Your browser does not support the audio element.
+        </audio>
+    </div>
+</body>
+</html>

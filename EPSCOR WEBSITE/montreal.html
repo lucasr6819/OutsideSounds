@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Montreal Map</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        .map-container {
+            width: 100%;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div class="map-container">
+        <iframe 
+            id="storymap-iframe"
+            src="https://uploads.knightlab.com/storymapjs/3bc60fd231d282864cb1578969d3f2ae/montreal-1/index.html" 
+            frameborder="0" 
+            width="100%" 
+            height="800"
+            allow="autoplay">
+        </iframe>
+    </div>
+</body>
+</html>
+<style>
+    .map-box {
+        width: 80%;
+        margin: 20px auto;
+        padding: 20px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        background: white;
+    }
+    .content-section {
+        width: 80%;
+        margin: 20px auto;
+        padding: 20px;
+    }
+    body {
+        background: #f5f5f5;
+    }
+</style></style>
+
+<style>
+    .map-container {
+        width: 80%;
+        max-width: 1000px;
+        height: 600px;
+        margin: 20px auto;
+        border: 2px solid #ccc;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    iframe {
+        width: 100%;
+        height: 100%;
+    }
+</style>
+
+<div class="time-selector">
+    <h3>Choose Time of Day</h3>
+    <ul>
+        <li><a href="#">Morning Locations</a></li>
+        <li><a href="#">Daytime Locations</a></li>
+        <li><a href="#">Night Locations</a></li>
+    </ul>
+</div>
+
+<style>
+    .time-selector {
+        position: fixed;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    .time-selector h3 {
+        margin: 0 0 15px 0;
+        color: #333;
+    }
+
+    .time-selector ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .time-selector li {
+        margin: 10px 0;
+    }
+
+    .time-selector a {
+        color: #007bff;
+        text-decoration: none;
+        padding: 5px 10px;
+        display: block;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+    }
+
+    .time-selector a:hover {
+        background-color: #f0f0f0;
+    }
+</style>
+
+</div>
+<div style="text-align: center; padding: 20px;">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Montreal_logo.svg/2560px-Montreal_logo.svg.png" 
+         alt="Montreal Logo" 
+         style="max-width: 300px; height: auto;">
+</div></div>
+
+<div class="audio-player-section">
+    <h3>Location Audio</h3>
+    <audio id="locationAudio" controls>
+        <source src="" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+</div>
+
+<script>
+    window.addEventListener('message', function(e) {
+        if (e.origin.includes('knightlab')) {
+            try {
+                const data = JSON.parse(e.data);
+                if (data.type === 'storymap_slide_change') {
+                    const audioPlayer = document.getElementById('locationAudio');
+                    // Map of slide IDs to audio files
+                    const audioMap = {
+                        'slide-1': 'path/to/audio1.mp3',
+                        'slide-2': 'path/to/audio2.mp3',
+                        'slide-3': 'path/to/audio3.mp3'
+                        // Add more slides and corresponding audio files
+                    };
+                    
+                    if (audioMap[data.id]) {
+                        audioPlayer.src = audioMap[data.id];
+                        audioPlayer.play();
+                    }
+                }
+            } catch (error) {
+                console.error('Error processing message:', error);
+            }
+        }
+    });
+</script>
+
+<style>
+    .audio-player-section {
+        width: 80%;
+        margin: 20px auto;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+
+    #locationAudio {
+        width: 100%;
+        max-width: 500px;
+        margin-top: 10px;
+    }
+</style>

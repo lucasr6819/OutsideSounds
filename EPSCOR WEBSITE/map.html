@@ -1,0 +1,293 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Montreal Audio Map</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+    <style>
+        .audio-point {
+            fill: #ff4444;
+            cursor: pointer;
+        }
+        .audio-point:hover {
+            fill: #ff8888;
+        }
+        #map {
+            margin: 20px;
+        }
+        .point-info {
+            position: absolute;
+            background: white;
+            padding: 10px;
+            border: 1px solid #ccc;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="point-info"></div>
+
+    <script>
+        // Set up dimensions
+        const width = 960;
+        const height = 500;
+
+        // Create SVG
+        const svg = d3.select("#map")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        // Create projection focused on Montreal
+        const projection = d3.geoMercator()
+            .center([-73.576361, 45.503389])
+            .scale(150000)
+            .translate([width / 2, height / 2]);
+
+        // Create path generator
+        const path = d3.geoPath().projection(projection);
+
+        // Audio points data
+        const audioPoints = [
+            {
+                name: "In between University Library & Welcome Center",
+                coordinates: [-73.576361, 45.503389],
+                audioUrl: "inbetween.m4a",
+                date: "05/29/2025",
+                time: "5:45",
+                audioFeatures: [
+                    { type: "footsteps", timeRange: "0:08-0:20" },
+                    { type: "birds", timeRange: "entire recording" },
+                    { type: "ambient crowd", timeRange: "entire recording" }
+                ],
+                duration: "42 seconds"
+            }
+        ];
+
+        // Load Montreal map data
+        d3.json("https://unpkg.com/world-atlas@2/countries-110m.json")
+            .then(function(data) {
+                // Draw base map
+                svg.append("g")
+                    .selectAll("path")
+                    .data(topojson.feature(data, data.objects.countries).features)
+                    .enter()
+                    .append("path")
+                    .attr("d", path)
+                    .style("fill", "#ccc")
+                    .style("stroke", "#fff")
+                    .style("stroke-width", 0.5);
+
+                // Add audio points
+                svg.selectAll("circle")
+                    .data(audioPoints)
+                    .enter()
+                    .append("circle")
+                    .attr("class", "audio-point")
+                    .attr("r", 8)
+                    .attr("transform", function(d) {
+                        return "translate(" + projection(d.coordinates) + ")";
+                    })
+                    .on("click", function(event, d) {
+                        const audio = new Audio(d.audioUrl);
+                        audio.play();
+                    })
+                    .on("mouseover", function(event, d) {
+                        const info = d3.select(".point-info")
+                            .style("display", "block")
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY + 10) + "px");
+                        
+                        info.html(`
+                            <strong>${d.name}</strong><br>
+                            Date: ${d.date}<br>
+                            Time: ${d.time}<br>
+                            Duration: ${d.duration}<br>
+                            Features:<br>
+                            ${d.audioFeatures.map(f => `- ${f.type} (${f.timeRange})`).join('<br>')}
+                        `);
+                    })
+                    .on("mouseout", function() {
+                        d3.select(".point-info").style("display", "none");
+                    });
+            });
+    </script>
+</body>
+</body>
+<div id="audio-controls" style="margin: 20px;"></div>
+    <h3>Audio Controls</h3>
+    <div id="audio-list"></div>
+    <script>
+        // Create audio list
+        const audioList = d3.select("#audio-list")
+            .selectAll("div")
+            .data(audioPoints)
+            .enter()
+            .append("div")
+            .style("margin", "10px")
+            .html(d => `
+                <strong>${d.name}</strong>
+                <button class="play-button" onclick="new Audio('${d.audioUrl}').play()">Play Audio</button>
+            `);
+    </script>
+</div>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Montreal Audio Map</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+    <style>
+        .audio-point {
+            fill: #ff4444;
+            cursor: pointer;
+        }
+        .audio-point:hover {
+            fill: #ff8888;
+        }
+        #map {
+            margin: 20px;
+        }
+        .point-info {
+            position: absolute;
+            background: white;
+            padding: 10px;
+            border: 1px solid #ccc;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="point-info"></div>
+
+    <script>
+        // Set up dimensions
+        const width = 960;
+        const height = 500;
+        let currentAudio = null;
+
+        // Create SVG
+        const svg = d3.select("#map")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        // Create projection focused on Montreal
+        const projection = d3.geoMercator()
+            .center([-73.576361, 45.503389])
+            .scale(150000)
+            .translate([width / 2, height / 2]);
+
+        // Create path generator
+        const path = d3.geoPath().projection(projection);
+
+        // Audio points data
+        const audioPoints = [
+            {
+                name: "In between University Library & Welcome Center",
+                coordinates: [-73.576361, 45.503389],
+                audioUrl: "inbetween.m4a",
+                date: "05/29/2025",
+                time: "5:45",
+                audioFeatures: [
+                    { type: "footsteps", timeRange: "0:08-0:20" },
+                    { type: "birds", timeRange: "entire recording" },
+                    { type: "ambient crowd", timeRange: "entire recording" }
+                ],
+                duration: "42 seconds"
+            }
+        ];
+
+        // Load Montreal map data
+        d3.json("https://unpkg.com/world-atlas@2/countries-110m.json")
+            .then(function(data) {
+                // Draw base map
+                svg.append("g")
+                    .selectAll("path")
+                    .data(topojson.feature(data, data.objects.countries).features)
+                    .enter()
+                    .append("path")
+                    .attr("d", path)
+                    .style("fill", "#ccc")
+                    .style("stroke", "#fff")
+                    .style("stroke-width", 0.5);
+
+                // Add audio points
+                svg.selectAll("circle")
+                    .data(audioPoints)
+                    .enter()
+                    .append("circle")
+                    .attr("class", "audio-point")
+                    .attr("r", 8)
+                    .attr("transform", function(d) {
+                        return "translate(" + projection(d.coordinates) + ")";
+                    })
+                    .on("mouseover", function(event, d) {
+                        const info = d3.select(".point-info")
+                            .style("display", "block")
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY + 10) + "px");
+                        
+                        info.html(`
+                            <strong>${d.name}</strong><br>
+                            Date: ${d.date}<br>
+                            Time: ${d.time}<br>
+                            Duration: ${d.duration}<br>
+                            Features:<br>
+                            ${d.audioFeatures.map(f => `- ${f.type} (${f.timeRange})`).join('<br>')}<br>
+                            <button onclick="toggleAudio('${d.audioUrl}')">Play/Pause Audio</button>
+                        `);
+
+                        // Start playing audio
+                        if (!currentAudio) {
+                            currentAudio = new Audio(d.audioUrl);
+                            currentAudio.play();
+                        }
+                    })
+                    .on("mouseout", function() {
+                        d3.select(".point-info").style("display", "none");
+                        // Stop and reset audio
+                        if (currentAudio) {
+                            currentAudio.pause();
+                            currentAudio.currentTime = 0;
+                            currentAudio = null;
+                        }
+                    });
+            });
+
+        // Toggle audio function
+        function toggleAudio(audioUrl) {
+            if (currentAudio && !currentAudio.paused) {
+                currentAudio.pause();
+            } else {
+                if (currentAudio) {
+                    currentAudio.play();
+                } else {
+                    currentAudio = new Audio(audioUrl);
+                    currentAudio.play();
+                }
+            }
+        }
+    </script>
+</body>
+<div id="audio-controls" style="margin: 20px;">
+    <h3>Audio Controls</h3>
+    <div id="audio-list"></div>
+    <script>
+        // Create audio list
+        const audioList = d3.select("#audio-list")
+            .selectAll("div")
+            .data(audioPoints)
+            .enter()
+            .append("div")
+            .style("margin", "10px")
+            .html(d => `
+                <strong>${d.name}</strong>
+                <button class="play-button" onclick="toggleAudio('${d.audioUrl}')">Play/Pause Audio</button>
+            `);
+    </script>
+</div>
+</html>

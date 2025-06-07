@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EPSCOR Sound Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        /* Update audio container styles for iframe */
+        .audio-container {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+        .audio-container iframe {
+            border: none;
+            width: 100%;
+            height: 60px;
+            border-radius: 4px;
+        }
+        /* Keep all other existing styles */
+        .close-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 16px;
+            padding: 5px;
+            z-index: 1002;
+        }
+        .panel-controls {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1001;
+            display: flex;
+            gap: 10px;
+        }
+        .hide {
+            display: none !important;
+        }
+        .analysis-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .compare-location {
+            padding: 15px;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .comparison-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            display: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="panel-controls">
+        <button class="control-button" onclick="toggleComparison()">Compare Locations</button>
+        <button class="control-button" onclick="closeAllPanels()">Close All Panels</button>
+        <button class="control-button" onclick="showAllPanels()">Show All Panels</button>
+    </div>
+    
+    <div class="comparison-panel" id="comparison-panel">
+        <button class="close-button" onclick="togglePanel('comparison-panel')">✕</button>
+        <h3>Location Comparison</h3>
+        <div class="comparison-grid" id="comparison-grid">
+            <div class="compare-location" id="compare-1">
+                Select first location
+            </div>
+            <div class="compare-location" id="compare-2">
+                Select second location
+            </div>
+        </div>
+        <div id="comparisonChart" class="comparison-chart"></div>
+        <div id="analysisReport" class="analysis-report"></div>
+    </div>
+
+    <div class="info-container">
+        <div class="activity-indicator" id="activity-panel">
+            <button class="close-button" onclick="togglePanel('activity-panel')">✕</button>
+            <div><strong>Current Activity Level</strong></div>
+            <div id="activity-display" style="margin-top: 8px;">
+                Click a location to view activity
+            </div>
+        </div>
+    </div>
+
+    <div class="legend" id="time-panel">
+        <button class="close-button" onclick="togglePanel('time-panel')">✕</button>
+        <strong>Time of Day</strong>
+        <div class="legend-item">
+            <span class="legend-color" style="background: #2C2C2C"></span>Morning (5-12)
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background: #666666"></span>Afternoon (12-17)
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background: #999999"></span>Evening (17-20)
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background: #000000"></span>Night (20-5)
+        </div>
+    </div>
+
+    <a href="index.html" class="back-button">← Back to Home</a>
+
+    <script>
+        // Initialize map and variables
+        const map = L.map('map').setView([45.503383, -73.576334], 17);
+        let isComparing = false;
+        let compareData = {
+            first: null,
+            second: null
+        };
+
+        // Add tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Define McGill bounds
+        const mcgillBounds = [
+            [45.505, -73.579],
+            [45.501, -73.579],
+            [45.501, -73.574],
+            [45.505, -73.574]
+        ];
+
+        // Add polygon
+        L.polygon(mcgillBounds, {
+            color: '#000000',
+            fillOpacity: 0.1,
+            weight: 2
+        }).addTo(map);
+
+        // Helper functions
+        function togglePanel(panelId) {
+            document.getElementById(panelId).classList.toggle('hide');
+        }
+
+        function closeAllPanels() {
+            ['activity-panel', 'time-panel', 'comparison-panel'].forEach(id => {
+                document.getElementById(id).classList.add('hide');
+            });
+        }
+
+        function showAllPanels() {
+            ['activity-panel', 'time-panel', 'comparison-panel'].forEach(id => {
+                document.getElementById(id).classList.remove('hide');
+            });
+        }
+
+        const getTimeColor = (timeStr) => {
+            const hour = parseInt(timeStr.split(':')[0]);
+            if (hour >= 5 && hour < 12) return '#2C2C2C';
+            if (hour >= 12 && hour < 17) return '#666666';
+            if (hour >= 17 && hour < 20) return '#999999';
+            return '#000000';
+        };
+
+        const getQualityLabel = (quality) => {
+            const colors = {
+                poor: '#F44336',
+                medium: '#FFC107',
+                good: '#4CAF50'
+            };
+            return `<span class="quality-indicator" style="background-color: ${colors[quality]}">${quality.toUpperCase()}</span>`;
+        };
+
+        // Location data with Google Drive links
+        const locationData = [
+            {
+                id: 1,
+                coordinates: {
+                    latitude: 45.503383,
+                    longitude: -73.576334
+                },
+                recordingName: "Morning Recording - University Library",
+                locationName: "McGill University Library",
+                soundSources: ["Birds", "Foot steps", "busses", "city sound", "sniffing"],
+                fileName: "https://drive.google.com/file/d/1ezhePitnkqWGS5yknLJh4UL4TGaaL57K/preview",
+                temperature: "20",
+                timeStart: "19:45",
+                duration: "42",
+                weather: "Partly Cloudy",
+                activityLevel: 2,
+                device: "iPhone 13",
+                activityDescription: "Quite, sound bouncing off walls, few people walking around"
+            },
+            {
+                id: 2,
+                coordinates: {
+                    latitude: 45.503583,
+                    longitude: -73.576534
+                },
+                recordingName: "Daytime Recording - Welcome Center",
+                locationName: "McGill Welcome Center",
+                soundSources: ["Workers moving metal", "foot steps", "Birds", "Students walking"],
+                fileName: "https://drive.google.com/file/d/1mjZ9fWEN4_zYdsInBfBiQZtCbWoswd4B/preview",
+                temperature: "30",
+                timeStart: "11:36",
+                duration: "609",
+                weather: "Slightly Sunny",
+                activityLevel: 3,
+                device: "iPhone 13",
+                activityDescription: "People walking, Lady looking through trash, families walking by, students walking by"
+            }
+        ];
+
+        // Keep existing analysis functions
+        const analyzeSoundPatterns = (sounds1, sounds2) => {
+            const commonSounds = sounds1.filter(sound => sounds2.includes(sound));
+            const uniqueSounds1 = sounds1.filter(sound => !sounds2.includes(sound));
+            const uniqueSounds2 = sounds2.filter(sound => !sounds1.includes(sound));
+            return {
+                common: commonSounds,
+                unique1: uniqueSounds1,
+                unique2: uniqueSounds2
+            };
+        };
+
+        const updateComparisonDisplay = () => {
+            ['first', 'second'].forEach((position, index) => {
+                const location = compareData[position];
+                const element = document.getElementById(`compare-${index + 1}`);
+                
+                if (!location) {
+                    element.innerHTML = `Select ${position} location`;
+                    return;
+                }
+
+                element.innerHTML = `
+                    <div class="location-header">
+                        <strong>${location.recordingName}</strong>
+                        ${getQualityLabel('poor')}
+                    </div>
+                    <div class="location-details">
+                        <div class="time-weather">
+                            <strong>Time:</strong> ${location.timeStart}<br/>
+                            <strong>Weather:</strong> ${location.weather}
+                        </div>
+                        <div class="temperature-display">
+                            <strong>Temperature:</strong> ${location.temperature}°C
+                        </div>
+                        <div class="activity-level">
+                            <strong>Activity:</strong> ${location.activityLevel}/5
+                        </div>
+                        <div class="audio-container">
+                            <iframe src="${location.fileName}" 
+                                allow="autoplay" 
+                                width="100%" 
+                                height="60"></iframe>
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (compareData.first && compareData.second) {
+                createComparisonChart();
+                generateAnalysis();
+            }
+        };
+
+        const generateAnalysis = () => {
+            if (!compareData.first || !compareData.second) return;
+
+            const soundAnalysis = analyzeSoundPatterns(
+                compareData.first.soundSources,
+                compareData.second.soundSources
+            );
+
+            document.getElementById('analysisReport').innerHTML = `
+                <div class="analysis-section">
+                    <h4>Sound Analysis</h4>
+                    <p><strong>Common Sounds:</strong> ${soundAnalysis.common.join(', ') || 'None'}</p>
+                    <p><strong>Unique to ${compareData.first.locationName}:</strong> ${soundAnalysis.unique1.join(', ') || 'None'}</p>
+                    <p><strong>Unique to ${compareData.second.locationName}:</strong> ${soundAnalysis.unique2.join(', ') || 'None'}</p>
+                    
+                    <h4>Environmental Comparison</h4>
+                    <p><strong>Temperature Difference:</strong> ${Math.abs(parseInt(compareData.first.temperature) - parseInt(compareData.second.temperature))}°C</p>
+                    <p><strong>Weather Change:</strong> ${compareData.first.weather} to ${compareData.second.weather}</p>
+                    
+                    <h4>Activity Analysis</h4>
+                    <p><strong>Location 1:</strong> ${compareData.first.activityDescription}</p>
+                    <p><strong>Location 2:</strong> ${compareData.second.activityDescription}</p>
+                </div>
+            `;
+        };
+
+        // Keep existing comparison chart function
+        const createComparisonChart = () => {
+            if (!compareData.first || !compareData.second) return;
+
+            const trace1 = {
+                x: ['Temperature (°C)', 'Activity Level', 'Duration (min)'],
+                y: [
+                    parseInt(compareData.first.temperature),
+                    compareData.first.activityLevel,
+                    parseInt(compareData.first.duration)/60
+                ],
+                name: compareData.first.locationName,
+                type: 'bar'
+            };
+
+            const trace2 = {
+                x: ['Temperature (°C)', 'Activity Level', 'Duration (min)'],
+                y: [
+                    parseInt(compareData.second.temperature),
+                    compareData.second.activityLevel,
+                    parseInt(compareData.second.duration)/60
+                ],
+                name: compareData.second.locationName,
+                type: 'bar'
+            };
+
+            const layout = {
+                barmode: 'group',
+                height: 300,
+                margin: { t: 20, b: 40, l: 60, r: 20 }
+            };
+
+            Plotly.newPlot('comparisonChart', [trace1, trace2], layout);
+        };
+
+        const toggleComparison = () => {
+            isComparing = !isComparing;
+            document.getElementById('comparison-panel').style.display = isComparing ? 'block' : 'none';
+            if (!isComparing) {
+                compareData = { first: null, second: null };
+                updateComparisonDisplay();
+            }
+        };
+
+        const updateActivityLevel = (location) => {
+            const dots = Array(5).fill('').map((_, i) => 
+                `<span class="dot ${i < location.activityLevel ? 'filled' : 'empty'}"></span>`
+            ).join('');
+            
+            document.getElementById('activity-display').innerHTML = `
+                ${location.locationName}<br/>
+                <span class="activity-dots">${dots}</span>
+            `;
+        };
+
+        // Add markers
+        locationData.forEach(location => {
+            const marker = L.circleMarker(
+                [location.coordinates.latitude, location.coordinates.longitude],
+                {
+                    radius: 8,
+                    fillColor: getTimeColor(location.timeStart),
+                    color: '#000000',
+                    weight: 2,
+                    fillOpacity: 1
+                }
+            ).addTo(map);
+
+            marker.on('click', () => {
+                if (isComparing) {
+                    if (!compareData.first) {
+                        compareData.first = location;
+                    } else if (!compareData.second && location.id !== compareData.first.id) {
+                        compareData.second = location;
+                    }
+                    updateComparisonDisplay();
+                } else {
+                    updateActivityLevel(location);
+                }
+            });
+
+            marker.bindPopup(`
+                <div class="popup-content">
+                    <strong>${location.recordingName}</strong><br/>
+                    <strong>Time:</strong> ${location.timeStart}<br/>
+                    <strong>Weather:</strong> ${location.weather}<br/>
+                    <strong>Temperature:</strong> ${location.temperature}°C<br/>
+                    <strong>Activity Level:</strong> ${location.activityLevel}/5<br/>
+                    <strong>Recording Quality:</strong> ${getQualityLabel('poor')}<br/>
+                    <strong>Device:</strong> ${location.device}<br/>
+                    <strong>Sounds:</strong> ${location.soundSources.join(", ")}<br/>
+                    <strong>Description:</strong> ${location.activityDescription}<br/>
+                    <div class="audio-container">
+                        <iframe src="${location.fileName}" 
+                            allow="autoplay" 
+                            width="100%" 
+                            height="60"></iframe>
+                    </div>
+                </div>
+            `);
+        });
+    </script>
+</body>
+</html>
